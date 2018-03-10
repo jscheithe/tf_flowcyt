@@ -6,24 +6,28 @@ Created on Mon Nov 21 11:15:26 2016
 """
 
 import os
+import subprocess
 import glob
 import csv
 import time
+import numpy as np
+import h5py
 
 datadir = 'data/'
-autoflowdir = datadir + 'autoflow/'
+autoflowdir = datadir + 'autoflow_all/'
 h5dir = datadir + 'h5/'
 unbalanceddir = h5dir + 'unbalanced/'
 balanceddir = h5dir + 'balanced/'
 
-"""Fills the subfolders 'data/h5/balanced', 'data/h5/unbalanced' with the h5-files, 
-created from the data in 'data/autoflow'. Training data is balanced, test data is 
-unbalanced. The sample numbers for the N-th test set, as specified in the N-th 
-column of the file specified in csvpath. The .bin files in 'data/autoflow' start with 
-their sample number followed by an underscore. Nonexisting h5 files are generated using 
-h5_creator.py."""
 
 def createTrainTestH5(csvpath, N):    
+    """Fills the subfolders 'data/h5/balanced', 'data/h5/unbalanced' with the h5-files, 
+    created from the data in 'data/autoflow'. Training data is balanced, test data is 
+    unbalanced. The sample numbers for the N-th test set, as specified in the N-th 
+    column of the file specified in csvpath. The .bin files in 'data/autoflow' start with 
+    their sample number followed by an underscore. Nonexisting h5 files are generated using 
+    h5_creator.py."""
+    
     trainFiles = []
     testFiles = []
     lTestSamples = []       
@@ -67,6 +71,28 @@ def createTrainTestH5(csvpath, N):
 
     return trainFiles, testFiles
 
+def createAllH5():         
+    for f in os.listdir(autoflowdir):
+        if(f.endswith('.bin')):
+            binfilepath = autoflowdir + f
+            out1 = subprocess.check_output(["python", "tf_flowcyt/h5_creator.py", binfilepath, unbalanceddir, "False"])
+            print(str(out1))
+            out2 = subprocess.check_output(["python", "tf_flowcyt/h5_creator.py", binfilepath, balanceddir, "True"])
+            print(str(out2))
+#            os.system("python h5_creator.py " + binfilepath + " " + unbalanceddir + " False")
+#            os.system("python h5_creator.py " + binfilepath + " " + balanceddir + " True")
+                   
+    
 
-        
-        
+def read_h5(files):
+    data = np.empty((0,9))
+    labels = np.empty((0,1))
+    for filename in files:
+        with h5py.File(filename, "r") as f:
+            dsetX = f['data'][()]
+            dsetY = f['label'][()]   
+            data = np.concatenate((data, np.array(dsetX)))
+            labels = np.concatenate((labels, np.array(dsetY)))
+    return data, labels     
+    
+
